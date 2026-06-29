@@ -6,7 +6,9 @@
 //
 
 import SwiftUI
+#if canImport(UIKit)
 import UIKit
+#endif
 
 /// Single-purpose screen for editing a user's handle.
 ///
@@ -17,9 +19,9 @@ import UIKit
 /// The screen owns one piece of internal state across launches: the anchor
 /// (the first username it ever saw on this device), persisted in `@AppStorage`.
 /// That anchor powers the in-screen restore chip.
-struct ContentView: View {
-    let initialUsername: String
-    let onSet: (String) -> Void
+public struct ContentView: View {
+    public let initialUsername: String
+    public let onSet: (String) -> Void
 
     @AppStorage("market.Username.firstSeen") private var firstSeen: String = ""
 
@@ -35,7 +37,7 @@ struct ContentView: View {
     /// - Parameters:
     ///   - initialUsername: The handle to display when the screen first appears.
     ///   - onSet: Called when the user commits a new handle (via Set or restore).
-    init(initialUsername: String, onSet: @escaping (String) -> Void) {
+    public init(initialUsername: String, onSet: @escaping (String) -> Void) {
         self.initialUsername = initialUsername
         self.onSet = onSet
         _currentUsername = State(initialValue: initialUsername)
@@ -65,7 +67,7 @@ struct ContentView: View {
         reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.76)
     }
 
-    var body: some View {
+    public var body: some View {
         VStack(spacing: 0) {
             Spacer(minLength: 0)
 
@@ -176,10 +178,12 @@ struct ContentView: View {
         .task {
             try? await Task.sleep(for: .milliseconds(350))
             fieldFocused = true
+            #if os(iOS)
             UIApplication.shared.sendAction(
                 #selector(UIResponder.selectAll(_:)),
                 to: nil, from: nil, for: nil
             )
+            #endif
         }
     }
 
@@ -198,13 +202,13 @@ struct ContentView: View {
 /// Lives alongside ``ContentView`` so the screen owns its own rules
 /// (parent never sees them). Exposed at module-internal scope so tests
 /// can verify behavior without driving the view.
-struct UsernameRules {
-    static let minLength = 3
-    static let maxLength = 15
+public struct UsernameRules {
+    public static let minLength = 3
+    public static let maxLength = 15
 
     /// Strips disallowed characters and clamps length.
     /// Allowed: ASCII-letters, digits, underscore.
-    static func sanitize(_ raw: String) -> String {
+    public static func sanitize(_ raw: String) -> String {
         let filtered = raw.unicodeScalars.filter { scalar in
             let ch = Character(scalar)
             return ch.isLetter || ch.isNumber || ch == "_"
@@ -214,7 +218,7 @@ struct UsernameRules {
 
     /// Whether a trimmed candidate is within the allowed length range.
     /// Assumes the input has already passed through ``sanitize(_:)``.
-    static func isValid(_ candidate: String) -> Bool {
+    public static func isValid(_ candidate: String) -> Bool {
         let count = candidate.count
         return count >= minLength && count <= maxLength
     }
