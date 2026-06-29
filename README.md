@@ -1,93 +1,78 @@
 # Username
 
-A lightweight iOS/macOS application built with SwiftUI that provides a dedicated, accessible screen for editing and validating a user's handle. The app enforces strict formatting rules, persists the initial username across sessions, and delivers a polished editing experience with real-time sanitization, haptic feedback, and smooth animations.
+A lightweight, single-purpose SwiftUI component for editing, validating, and persisting user handles. Designed as both a standalone iOS app and a reusable Swift Package, it provides a clean, dark-mode interface with real-time sanitization, haptic feedback, and a one-tap restore feature.
 
 ## Features
-
-- **Real-time Input Sanitization**: Automatically strips disallowed characters and clamps length to 15 characters as the user types.
-- **Strict Validation**: Requires 3–15 characters using only ASCII letters, digits, and underscores.
-- **Persistent Restore**: Remembers the first username seen on the device via `@AppStorage`, enabling a one-tap restore chip.
-- **Accessibility & Dynamic Type**: Fully supports VoiceOver, Dynamic Type scaling, and reduced motion preferences.
-- **Haptic Feedback**: Triggers success and light impact haptics on commit and clear actions.
-- **Dark Mode Optimized**: Forces a dark color scheme for consistent visual presentation.
-- **Localization Ready**: UI strings are managed in a modern `.xcstrings` catalog.
+- **Real-time sanitization & validation**: Automatically strips disallowed characters and enforces a 3–15 character limit (alphanumeric + underscore only).
+- **Persistent anchor state**: Remembers the first username seen on the device to power an in-screen restore chip.
+- **Accessibility & UX**: Optimized for dark mode, supports dynamic type scaling, respects reduced motion preferences, and includes haptic feedback on commit/clear actions.
+- **Framework-ready**: Exports a pure UI library via SPM, excluding app-specific entry points and asset catalogs.
 
 ## Architecture & Key Files
-
-The project follows a minimal, single-screen architecture where the app delegate owns the navigation stack and state, while the view owns its own validation rules.
-
 | Path | Purpose |
 |------|---------|
-| `Username/UsernameApp.swift` | App entry point. Initializes the default state (`"femi"`) and wraps `ContentView` in a `NavigationStack`. |
-| `Username/ContentView.swift` | Core UI and business logic. Contains `ContentView` (the editor) and `UsernameRules` (validation/sanitization). Uses `@AppStorage` to persist the initial handle. |
-| `Username/Localizable.xcstrings` | String catalog for UI text. Configured as the primary localization format. |
+| `Package.swift` | SPM manifest. Defines the `Username` library target, excludes app files, and enforces Swift 6 language mode. |
+| `Username/ContentView.swift` | Public SwiftUI view and `UsernameRules` struct. Handles UI layout, input sanitization, validation, state persistence, and commit callbacks. |
+| `Username/UsernameApp.swift` | App entry point (`@main`). Demonstrates integration and manages the root username state. |
+| `Username/Localizable.xcstrings` | Centralized localization strings in the modern `.xcstrings` format. |
 | `UsernameTests/UsernameTests.swift` | Unit tests using the Swift Testing framework. Covers `UsernameRules` edge cases and view initialization. |
-| `UsernameUITests/` | XCTest-based UI tests for launch and performance baselines. |
-| `Package.swift` | Swift Package Manager manifest. Defines the `Username` library, targets, and Swift 6 language mode. |
-| `Username.xcodeproj/` | Xcode project configuration for building, running, and testing the application. |
+| `UsernameUITests/` | Scaffolded UI tests for launch performance and basic automation. |
+| `Username.xcodeproj/project.pbxproj` | Xcode project configuration. Sets iOS 26.5 deployment target, `MainActor` default isolation, and bundle identifier `market.Username`. |
 
-## Installation & Building
+## Installation & Build
 
-### Prerequisites
-- Xcode 15+ (recommended for SwiftUI and Swift Testing support)
-- iOS 15+ or macOS 12+ deployment target
-- Swift 6
-
-### Using Xcode (Recommended)
+### Xcode
 1. Open `Username.xcodeproj` in Xcode.
-2. Select the `Username` scheme.
-3. Choose a simulator or physical device.
-4. Press `⌘R` to build and run.
+2. Select the `Username` scheme and build/run on a simulator or device.
+3. Requires Xcode 26.5+ and iOS 26.5 deployment target (as declared in project settings).
 
-### Using Swift Package Manager
-The project is structured as a Swift Package for library consumption:
-```bash
-git clone <repository-url>
-cd Username
-swift build
+### Swift Package Manager
+Add the package to your `Package.swift` or Xcode project dependencies:
+```swift
+.package(path: "/path/to/Username")
 ```
-*Note: SPM builds the `Username` library target. To run the full application with SwiftUI, use Xcode.*
+Link the `Username` library target to your app. The library target intentionally excludes `UsernameApp.swift` and `Assets.xcassets` to keep the dependency lightweight.
 
-## Running the App
+## Usage
 
-Upon launch, the app displays a centered text field prefixed with `@`. The field automatically focuses and selects existing text after a brief delay.
+`ContentView` is a public, reusable view that requires an initial username and a commit callback:
 
-- **Set a new handle**: Type a valid username and tap the `Set` button in the navigation bar, or press Return.
-- **Clear input**: Tap the `×` button that appears when text is entered.
-- **Restore original**: If the current username differs from the first-seen value, a restore chip appears showing `@<original>`. Tapping it reverts to the original handle and commits the change.
-- **Validation feedback**: If the draft is empty or below the 3-character minimum, contextual hints appear below the input field.
+```swift
+NavigationStack {
+    ContentView(initialUsername: "current_handle") { newName in
+        // Handle the committed username
+    }
+}
+```
+
+### Behavior
+- **Input Handling**: The text field automatically sanitizes input via `UsernameRules.sanitize(_:)` on every keystroke.
+- **Validation**: The `Set` button remains disabled until the trimmed input is 3–15 characters and differs from the current username.
+- **Restore Chip**: Appears when the current username differs from the persisted anchor. Tapping it reverts to the original handle and triggers the `onSet` callback.
+- **State Persistence**: The anchor is stored in `@AppStorage("market.Username.firstSeen")` and survives app relaunches.
 
 ## Testing
 
-### Unit Tests
-Run via Xcode's test navigator or the command line:
+Run unit tests via Xcode or the Swift CLI:
 ```bash
 swift test
 ```
-Tests cover:
-- `UsernameRules.sanitize(_:)`: Stripping punctuation, symbols, emoji, preserving allowed characters, length clamping, idempotency, and empty input.
-- `UsernameRules.isValid(_:)`: Boundary checks for minimum (3) and maximum (15) lengths.
-- `ContentView` initialization without crashes.
 
-### UI Tests
-Located in `UsernameUITests/`. Provides baseline launch metrics and screen capture attachments. Run via Xcode or:
-```bash
-xcodebuild test -scheme UsernameUITests
-```
+The test suite (`UsernameTests/UsernameTests.swift`) covers:
+- Sanitization edge cases: emoji stripping, punctuation removal, length clamping, and idempotency.
+- Validation boundaries: minimum/maximum length, empty strings, and invalid characters.
+- View initialization: ensures `ContentView` initializes without crashing on the main thread.
 
-## Localization
+UI tests are scaffolded for launch performance benchmarking and basic automation.
 
-UI strings are centralized in `Username/Localizable.xcstrings`. The Xcode project is configured with `LOCALIZATION_PREFERS_STRING_CATALOGS = YES` and `STRING_CATALOG_GENERATE_SYMBOLS = YES`.
+## Configuration & Conventions
 
-To add a new language:
-1. Open `Localizable.xcstrings` in Xcode.
-2. Click the `+` button in the localization inspector and select the target language.
-3. Translate the extracted strings. The app will automatically pick up the localized strings at runtime.
-
-## Non-Obvious Conventions & Notes
-
-- **State Persistence**: The initial username is stored in `@AppStorage("market.Username.firstSeen")`. This value is set once on first launch and never cleared, enabling the restore functionality across app relaunches.
-- **Input Sanitization Flow**: The `.onChange(of: draft)` modifier runs `UsernameRules.sanitize(new)` synchronously. Disallowed characters are removed immediately, and the string is truncated to 15 characters before validation occurs.
-- **Concurrency & Isolation**: The package enforces Swift 6 strict concurrency (`swiftLanguageModes: [.v6]`). All UI state and callbacks are `@MainActor`-isolated.
-- **Deployment Target Configuration**: The Xcode project file (`project.pbxproj`) contains `IPHONEOS_DEPLOYMENT_TARGET = 26.5`, which appears to be a placeholder or future-dated value. The SPM manifest (`Package.swift`) correctly specifies `.iOS(.v15)`. Adjust deployment targets in Xcode's project settings if targeting specific OS versions.
-- **Haptic Triggers**: Haptics are driven by integer state variables (`commitTick`, `lightTick`) rather than direct API calls, allowing SwiftUI's `.sensoryFeedback()` modifier to handle timing and animation synchronization cleanly.
+- **Concurrency Model**: Swift 6 mode is enabled with `MainActor` as the default isolation context (`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`). All UI state mutations occur on the main actor.
+- **Localization**: Defaults to English (`defaultLocalization: "en"` in `Package.swift`). Strings are managed in `Username/Localizable.xcstrings`.
+- **UI/UX Defaults**: 
+  - Forced dark mode via `.preferredColorScheme(.dark)`
+  - Dynamic type support: `.large ... .accessibility1`
+  - Haptic feedback: `.sensoryFeedback(.success)` on commit, `.impact(weight: .light)` on clear
+  - Reduced motion: Animations are disabled when `.accessibilityReduceMotion` is true
+- **Bundle Identifier**: `market.Username` (configurable in Xcode build settings under `PRODUCT_BUNDLE_IDENTIFIER`).
+- **Code Signing**: Automatic code signing is enabled with development team `KW95N2FYJ8` (update as needed for production).

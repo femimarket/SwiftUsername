@@ -5,9 +5,9 @@ import PackageDescription
 
 let package = Package(
     name: "Username",
+    defaultLocalization: "en",
     platforms: [
-        .iOS(.v15),
-        .macOS(.v12),
+        .iOS(.v26),
     ],
     products: [
         .library(
@@ -18,7 +18,8 @@ let package = Package(
     targets: [
         .target(
             name: "Username",
-            path: "Username"
+            path: "Username",
+            exclude: ["UsernameApp.swift", "Assets.xcassets"]
         ),
     ],
     swiftLanguageModes: [.v6]
